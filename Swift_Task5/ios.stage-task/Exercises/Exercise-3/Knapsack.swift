@@ -22,119 +22,42 @@ public final class Knapsack {
     var value = -1
     
   }
-  
   func findMaxKilometres() -> Int {
-    var output = 0
-    if maxWeight > 2500 || foods.count == 0 || foods.count > 100 || drinks.count == 0 || drinks.count > 100 {
-      return -1
-    }
+    guard var output = checkLimits() else { return -1 }
+    
+    let foodsDynamicTable = makeTable(items: foods)
+    let drinksDynamicTable = makeTable(items: drinks)
 
-    let foodsDynamicTable : [[Element]] = makeDynamicTable(items: foods)
-    let drinkDynamicTable : [[Element]] = makeDynamicTable(items: drinks)
-
-    foodsDynamicTable[1].reversed().enumerated().forEach {(index, food) in
-      let freeWeight = maxWeight - food.weight
-      if freeWeight > 0 {
-        
-        if let columnWithWeight = findColumn2(arrayHeader: drinkDynamicTable[0], weight: freeWeight) {
-          let drink = drinkDynamicTable[1][columnWithWeight]
-          let maxValue =  min(food.value, drink.value)
-          if maxValue > output {
-            output = maxValue
-          }
-        }
+    for i in 1...maxWeight - 1 {
+      let value = min(foodsDynamicTable[i], drinksDynamicTable[maxWeight - i])
+      if value > output {
+        output = value
       }
     }
-    
     return output
   }
-  func findColumn(arrayHeader : [Element], weight: Int ) -> Int? {
-    //просто возвращаем индекс
-    var returnIndex : Int?
-    arrayHeader.enumerated().forEach { (index, value) in
-      if value.weight  == weight {
-        returnIndex = index
-      }
-    }
-    return returnIndex
-  }
-  
-  func findColumn2(arrayHeader : [Element], weight: Int ) -> Int? {
-    
-    var returnIndex : Int?
-    arrayHeader.enumerated().forEach{(index, value) in
-      if value.weight == weight {
-        returnIndex = index
-      }
-    }
-    return returnIndex
-  }
-  
-  func makeDynamicTable(items: [Supply])->[[Element]] {
-    
-    guard let minWeightFood: Int = items.min(by: { $0.weight < $1.weight })?.weight else { return [[]] }
-    let  maxWeightFood =  maxWeight //  self.maxMy
-    var tableFoods : [[Element]] = []
-    var arrayHeader: [Element] = []
-    
-    for weight in minWeightFood...maxWeightFood {
-      let element = Element(weight: weight)
-      arrayHeader.append(element)
-    }
-    arrayHeader.insert(Element(), at: 0)
-    tableFoods.append(arrayHeader)
-    
-    var i = 1
-    items.enumerated().forEach { indexMeal, valueMeal in
-      var array: [Element] = []
-      var element = Element(weight: valueMeal.weight, value: valueMeal.value)
-      
-      tableFoods[0].enumerated().forEach { indexHeader, valueHeader in
-        
-        if indexHeader != 0 {
-          
-          var currentValue : Element = Element()
-          if  valueMeal.weight <= valueHeader.weight {
-            currentValue.weight = valueMeal.weight
-            currentValue.value = valueMeal.value
-            let freeValue = abs(valueHeader.weight - valueMeal.weight)
-            if freeValue >= minWeightFood {
-              let prevRow = i - 1
-              if let columnWithWeight = findColumn(arrayHeader: arrayHeader, weight: freeValue) {
-                if prevRow >= 1 {
-                  let additionalValue = tableFoods[prevRow][columnWithWeight]
-                  if additionalValue.weight != -1 {
-                    currentValue.weight += additionalValue.weight
-                    currentValue.value += additionalValue.value
-                    
-                  }
-                }
-              }
-            }
-          }
-          
-          var previousValue : Element = Element()
-          let prevRow = i - 1
-          if prevRow >= 1 {
-            previousValue = tableFoods[prevRow][indexHeader]
-          }
-          
-          if currentValue.value > previousValue.value {
-            element = currentValue
-          } else {
-            element = previousValue
-          }
+  func makeTable(items: [Supply])->[Int] {
+    //create table with zeros
+    var table: [[Int]] = Array(repeating: Array(repeating: (0) , count: maxWeight + 1), count: items.count + 1)
+
+    for i in 1...items.count {
+      for j in 1...maxWeight {
+        var currentValue = 0
+        if items[i - 1].weight <= j {
+          // помещается в ячейку
+          currentValue = items[i - 1].value + table[i - 1][j - items[i - 1].weight]
         }
-        array.append(element)
-        
+        table[i][j] = max(currentValue, table[i - 1][j])
       }
-      tableFoods.append(array)
-      i += 1
-      
     }
-    return [tableFoods[0],tableFoods[tableFoods.count - 1]]
+    return table[items.count]
   }
   
-  
-  
+  func checkLimits()->Int?{
+    var output: Int? = 0
+    if maxWeight > 2500 || foods.count == 0 || foods.count > 100 || drinks.count == 0 || drinks.count > 100 {
+      output = nil
+    }
+    return output
+  }
 }
